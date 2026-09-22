@@ -132,15 +132,53 @@ def plot_sweeps(filename="sweeps.png"):
     plt.savefig(filename, dpi=150)
     plt.show()
 
+def plot_cv(NA, ND, A=1e-4, filename="cv_curve.png"):
+    V = np.linspace(-10, 0, 50)
+    C = junction_capacitance(NA, ND, V, A)
+
+    # Simulated "measurement": add 1% random noise
+    rng = np.random.default_rng(seed=1)
+    C_meas = C * (1 + 0.01 * rng.standard_normal(V.size))
+
+    # Fit a straight line to 1/C^2 vs V, then work backward
+    y = 1 / C_meas**2
+    slope, intercept = np.polyfit(V, y, 1)
+    Vbi_fit = -intercept / slope                       # where the line crosses zero
+    N_eff = -2 / (q * eps_s * A**2 * slope)            # = NA*ND / (NA + ND)
+    ND_fit = 1 / (1 / N_eff - 1 / NA)                  # assumes NA is known
+
+    Vbi_true = built_in_voltage(NA, ND)
+    print(f"Vbi: true = {Vbi_true:.3f} V, fitted = {Vbi_fit:.3f} V "
+          f"({(Vbi_fit - Vbi_true) / Vbi_true * 100:+.1f}%)")
+    print(f"ND:  true = {ND:.2e}, fitted = {ND_fit:.2e} cm^-3 "
+          f"({(ND_fit - ND) / ND * 100:+.1f}%)")
+
+    fig, ax = plt.subplots(1, 2, figsize=(11, 4))
+    fig.suptitle("C-V characteristic and doping extraction")
+
+    ax[0].plot(V, C * 1e12, label="Model")
+    ax[0].plot(V, C_meas * 1e12, "o", markersize=3, label="Simulated measurement")
+    ax[0].set_xlabel("Voltage (V)")
+    ax[0].set_ylabel("Capacitance (pF)")
+
+    V_line = np.linspace(-10, Vbi_fit, 100)
+    ax[1].plot(V, y, "o", markersize=3, label="Simulated measurement")
+    ax[1].plot(V_line, slope * V_line + intercept, "--", label=f"Fit (Vbi = {Vbi_fit:.2f} V)")
+    ax[1].axhline(0, color="k", linewidth=0.5)
+    ax[1].set_xlabel("Voltage (V)")
+    ax[1].set_ylabel("1/C$^2$ (1/F$^2$)")
+
+    for a in ax:
+        a.grid(alpha=0.3)
+        a.legend(fontsize=8)
+
+    plt.tight_layout()
+    plt.savefig(filename, dpi=150)
+    plt.show()
 
 if __name__ == "__main__":
     NA, ND = 1e17, 1e16
     # plot_equilibrium(NA, ND)
     # plot_iv(NA, ND)
-
-    for T in [250, 300, 350]:
-        I0 = saturation_current(NA, ND, T=T)
-        V_1mA = thermal_voltage(T) * np.log(1e-3 / I0 + 1)
-        print(f"T = {T} K: ni = {intrinsic_concentration(T):.2e} cm^-3, V at 1 mA = {V_1mA:.3f} V")
-
-    plot_sweeps()
+    # plot_sweeps()
+    plot_cv(NA, ND)

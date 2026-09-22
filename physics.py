@@ -49,8 +49,12 @@ def diode_current(V, NA, ND, n=1, T=300, **kwargs):
     I0 = saturation_current(NA, ND, T=T, **kwargs)
     return I0 * (np.exp(V / (n * thermal_voltage(T))) - 1)
 
+def junction_capacitance(NA, ND, V, A=1e-4):
+    """Depletion capacitance (F) at applied voltage V. A = area (cm^2)."""
+    return eps_s * A / depletion_width(NA, ND, V)
+
 if __name__ == "__main__":
-    NA, ND = 1e17, 1e16
+    NA, ND = 1e17, 1e1
     xp, xn = depletion_edges(NA, ND)
     print(f"Built-in voltage: {built_in_voltage(NA, ND):.3f} V")
     print(f"Depletion width:  {depletion_width(NA, ND) * 1e4:.3f} um")
