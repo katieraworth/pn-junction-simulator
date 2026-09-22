@@ -27,6 +27,19 @@ def max_field(NA, ND, V=0):
     xp, xn = depletion_edges(NA, ND, V)
     return q * ND * xn / eps_s
 
+def saturation_current(NA, ND, A=1e-4, Dn=20, Dp=10, tau=1e-6):
+    """Reverse saturation current I0 (A).
+    A = area (cm^2), Dn/Dp = diffusion coefficients (cm^2/s), tau = lifetime (s)
+    """
+    Ln = np.sqrt(Dn * tau)   # electron diffusion length (cm)
+    Lp = np.sqrt(Dp * tau)   # hole diffusion length (cm)
+    return q * A * ni**2 * (Dn / (Ln * NA) + Dp / (Lp * ND))
+
+
+def diode_current(V, NA, ND, n=1, **kwargs):
+    """Ideal diode (Shockley) current (A) at applied voltage V."""
+    I0 = saturation_current(NA, ND, **kwargs)
+    return I0 * (np.exp(V / (n * Vt)) - 1)
 
 if __name__ == "__main__":
     NA, ND = 1e17, 1e16
