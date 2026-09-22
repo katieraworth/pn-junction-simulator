@@ -1,7 +1,7 @@
 import numpy as np
 import matplotlib.pyplot as plt
 from constants import *
-from physics import built_in_voltage, depletion_edges, diode_current, saturation_current
+from physics import *
 
 
 def equilibrium_profiles(NA, ND, points=2000):
@@ -94,9 +94,53 @@ def plot_iv(NA, ND, filename="iv_curve.png"):
     plt.tight_layout()
     plt.savefig(filename, dpi=150)
     plt.show()
+def plot_sweeps(filename="sweeps.png"):
+    fig, ax = plt.subplots(2, 2, figsize=(12, 9))
+    fig.suptitle("Parameter sweeps")
+    ND_range = np.logspace(14, 18, 200)
+
+    # (a) and (b): built-in voltage and depletion width vs. doping
+    for NA in [1e15, 1e16, 1e17, 1e18]:
+        ax[0, 0].semilogx(ND_range, built_in_voltage(NA, ND_range), label=f"NA = {NA:.0e}")
+        ax[0, 1].loglog(ND_range, depletion_width(NA, ND_range) * 1e4, label=f"NA = {NA:.0e}")
+    ax[0, 0].set_xlabel("ND (cm$^{-3}$)")
+    ax[0, 0].set_ylabel("Built-in voltage (V)")
+    ax[0, 1].set_xlabel("ND (cm$^{-3}$)")
+    ax[0, 1].set_ylabel("Depletion width (µm)")
+
+    # (c): depletion width vs. applied voltage
+    V = np.linspace(-10, 0.5, 300)
+    ax[1, 0].plot(V, depletion_width(1e17, 1e16, V) * 1e4)
+    ax[1, 0].set_xlabel("Applied voltage (V)")
+    ax[1, 0].set_ylabel("Depletion width (µm)")
+    ax[1, 0].set_title("NA = 1e17, ND = 1e16")
+
+    # (d): I-V curve at different temperatures
+    V = np.linspace(0.05, 0.9, 300)
+    for T in [250, 300, 350]:
+        ax[1, 1].semilogy(V, diode_current(V, 1e17, 1e16, T=T), label=f"{T} K")
+    ax[1, 1].axhline(1e-3, color="gray", linestyle=":", label="1 mA")
+    ax[1, 1].set_xlabel("Voltage (V)")
+    ax[1, 1].set_ylabel("Current (A)")
+
+    for a in ax.flat:
+        a.grid(alpha=0.3)
+        if a.get_legend_handles_labels()[0]:
+            a.legend(fontsize=8)
+
+    plt.tight_layout()
+    plt.savefig(filename, dpi=150)
+    plt.show()
+
 
 if __name__ == "__main__":
     NA, ND = 1e17, 1e16
-    print(f"I0 = {saturation_current(NA, ND):.2e} A")
-    plot_equilibrium(NA, ND)
-    plot_iv(NA, ND)
+    # plot_equilibrium(NA, ND)
+    # plot_iv(NA, ND)
+
+    for T in [250, 300, 350]:
+        I0 = saturation_current(NA, ND, T=T)
+        V_1mA = thermal_voltage(T) * np.log(1e-3 / I0 + 1)
+        print(f"T = {T} K: ni = {intrinsic_concentration(T):.2e} cm^-3, V at 1 mA = {V_1mA:.3f} V")
+
+    plot_sweeps()
